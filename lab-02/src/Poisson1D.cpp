@@ -38,7 +38,7 @@ Poisson1D::setup()
               << std::endl;
 
     // Construct the quadrature formula of the appopriate degree of exactness.
-    quadrature = std::make_unique<QGauss<dim>>(r + 3);
+    quadrature = std::make_unique<QGauss<dim>>(r + 1);
 
     std::cout << "  Quadrature points per cell = " << quadrature->size()
               << std::endl;
