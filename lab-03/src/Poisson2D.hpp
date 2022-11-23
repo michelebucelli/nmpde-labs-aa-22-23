@@ -6,11 +6,11 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
 
-#include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_simplex_p.h>
 #include <deal.II/fe/fe_values.h>
 
 #include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_in.h>
 #include <deal.II/grid/grid_out.h>
 #include <deal.II/grid/tria.h>
 
@@ -36,7 +36,7 @@ class Poisson2D
 {
 public:
   // Physical dimension (1D, 2D, 3D)
-  static constexpr unsigned int dim = 1;
+  static constexpr unsigned int dim = 2;
 
   // Diffusion coefficient.
   // In deal.ii, functions are implemented by deriving the dealii::Function
@@ -51,7 +51,7 @@ public:
 
     // Evaluation.
     virtual double
-    value(const Point<dim> & /*p*/, const unsigned int /*component*/ = 0) const
+    value(const Point<dim> &p, const unsigned int /*component*/ = 0) const
     {
       return 1.0;
     }
@@ -69,10 +69,39 @@ public:
     virtual double
     value(const Point<dim> &p, const unsigned int /*component*/ = 0) const
     {
-      if (p[0] <= 1.0 / 8 || p[0] > 1.0 / 4.0)
-        return 0.0;
-      else
-        return -1.0;
+      return -5.0;
+    }
+  };
+
+  // Dirichlet boundary conditions.
+  class FunctionG : public Function<dim>
+  {
+  public:
+    // Constructor.
+    FunctionG()
+    {}
+
+    // Evaluation.
+    virtual double
+    value(const Point<dim> &p, const unsigned int /*component*/ = 0) const
+    {
+      return p[0] + p[1];
+    }
+  };
+
+  // Neumann boundary conditions.
+  class FunctionH : public Function<dim>
+  {
+  public:
+    // Constructor.
+    FunctionH()
+    {}
+
+    // Evaluation:
+    virtual double
+    value(const Point<dim> &p, const unsigned int /*component*/ = 0) const
+    {
+      return p[1];
     }
   };
 
@@ -111,6 +140,12 @@ protected:
   // Forcing term.
   ForcingTerm forcing_term;
 
+  // g(x).
+  FunctionG function_g;
+
+  // h(x).
+  FunctionH function_h;
+
   // Triangulation.
   Triangulation<dim> mesh;
 
@@ -125,6 +160,9 @@ protected:
   // We use a unique_ptr here so that we can choose the type and order of the
   // quadrature formula at runtime (the order is a constructor parameter).
   std::unique_ptr<Quadrature<dim>> quadrature;
+
+  // Quadrature formula used on boundary lines.
+  std::unique_ptr<Quadrature<dim - 1>> quadrature_boundary;
 
   // DoF handler.
   DoFHandler<dim> dof_handler;
