@@ -8,15 +8,20 @@ Poisson2D::setup()
   // Create the mesh.
   {
     std::cout << "Initializing the mesh" << std::endl;
-    GridGenerator::subdivided_hyper_cube(mesh, N + 1, 0.0, 1.0, true);
-    GridGenerator::convert_hypercube_to_simplex_mesh(mesh, mesh);
 
-    // Or read the mesh from file:
-    // GridIn<dim> grid_in;
-    // grid_in.attach_triangulation(mesh);
+    GridIn<dim> grid_in;
+    grid_in.attach_triangulation(mesh);
 
-    // std::ifstream mesh_file("../scripts/mesh.msh");
-    // grid_in.read_msh(mesh_file);
+    // Exercise 1.
+    // std::ifstream grid_in_file("../mesh/mesh-square-" + std::to_string(N + 1)
+    // +
+    //                            ".msh");
+
+    // Exercise 2.
+    std::ifstream grid_in_file("../mesh/mesh-u-" + std::to_string(N + 1) +
+                               ".msh");
+
+    grid_in.read_msh(grid_in_file);
 
     std::cout << "  Number of elements = " << mesh.n_active_cells()
               << std::endl;
@@ -48,11 +53,6 @@ Poisson2D::setup()
 
     std::cout << "  Quadrature points per cell = " << quadrature->size()
               << std::endl;
-
-    quadrature_boundary = std::make_unique<QGaussSimplex<dim - 1>>(r + 1);
-
-    std::cout << "  Quadrature points per boundary cell = "
-              << quadrature_boundary->size() << std::endl;
   }
 
   std::cout << "-----------------------------------------------" << std::endl;
@@ -129,15 +129,6 @@ Poisson2D::assemble()
     update_values | update_gradients | update_quadrature_points |
       update_JxW_values);
 
-  // Since we need to compute integrals on the boundary for Neumann conditions,
-  // we also need a FEValues object to compute quantities on boundary edges
-  // (faces).
-  FEFaceValues<dim> fe_values_boundary(*fe,
-                                       *quadrature_boundary,
-                                       update_values |
-                                         update_quadrature_points |
-                                         update_JxW_values);
-
   // Local matrix and right-hand side vector. We will overwrite them for
   // each element within the loop.
   FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
@@ -174,50 +165,26 @@ Poisson2D::assemble()
             {
               for (unsigned int j = 0; j < dofs_per_cell; ++j)
                 {
-                  // FEValues::shape_grad(i, q) returns the gradient of the i-th
-                  // basis function at the q-th quadrature node, already mapped
-                  // on the physical element: we don't have to deal with the
-                  // mapping, it's all hidden inside FEValues.
+                  // Diffusion term.
                   cell_matrix(i, j) += diffusion_coefficient.value(
                                          fe_values.quadrature_point(q)) // mu(x)
                                        * fe_values.shape_grad(i, q)     // (I)
                                        * fe_values.shape_grad(j, q)     // (II)
                                        * fe_values.JxW(q);              // (III)
+
+                  // Reaction term (exercise 1 only).
+                  // cell_matrix(i, j) +=
+                  //   reaction_coefficient.value(
+                  //     fe_values.quadrature_point(q)) * // sigma(x)
+                  //   fe_values.shape_value(i, q) *      // phi_i
+                  //   fe_values.shape_value(j, q) *      // phi_j
+                  //   fe_values.JxW(q);                  // dx
                 }
 
               cell_rhs(i) += forcing_term.value(fe_values.quadrature_point(q)) *
                              fe_values.shape_value(i, q) * fe_values.JxW(q);
             }
         }
-
-      // If the cell is adjacent to the boundary...
-      if (cell->at_boundary())
-        {
-          // ...we loop over its edges (referred to as faces in the deal.II
-          // jargon).
-          for (unsigned int face_number = 0; face_number < cell->n_faces();
-               ++face_number)
-            {
-              // If current face lies on the boundary, and its boundary ID (or
-              // tag) is that of one of the Neumann boundaries, we assemble the
-              // boundary integral.
-              if (cell->face(face_number)->at_boundary() &&
-                  (cell->face(face_number)->boundary_id() == 2 ||
-                   cell->face(face_number)->boundary_id() == 3))
-                {
-                  fe_values_boundary.reinit(cell, face_number);
-
-                  for (unsigned int q = 0; q < quadrature_boundary->size(); ++q)
-                    for (unsigned int i = 0; i < dofs_per_cell; ++i)
-                      cell_rhs(i) +=
-                        function_h.value(
-                          fe_values_boundary.quadrature_point(q)) * // h(xq)
-                        fe_values_boundary.shape_value(i, q) *      // v(xq)
-                        fe_values_boundary.JxW(q);                  // Jq wq
-                }
-            }
-        }
-
 
       // At this point the local matrix and vector are constructed: we
       // need to sum them into the global matrix and vector. To this end,
@@ -240,9 +207,20 @@ Poisson2D::assemble()
 
     // Then, we build a map that, for each boundary tag, stores the
     // corresponding boundary function.
+
     std::map<types::boundary_id, const Function<dim> *> boundary_functions;
-    boundary_functions[0] = &function_g;
-    boundary_functions[1] = &function_g;
+
+    // Exercise 1.
+    // boundary_functions[0] = &function_g;
+    // boundary_functions[1] = &function_g;
+    // boundary_functions[2] = &function_g;
+    // boundary_functions[3] = &function_g;
+
+    // Exercise 2.
+    Functions::ConstantFunction<dim> function_zero(0.0);
+    Functions::ConstantFunction<dim> function_one(1.0);
+    boundary_functions[0] = &function_zero;
+    boundary_functions[1] = &function_one;
 
     // interpolate_boundary_values fills the boundary_values map.
     VectorTools::interpolate_boundary_values(dof_handler,
@@ -305,4 +283,33 @@ Poisson2D::output() const
   std::cout << "Output written to " << output_file_name << std::endl;
 
   std::cout << "===============================================" << std::endl;
+}
+
+
+double
+Poisson2D::compute_error(const VectorTools::NormType &norm_type) const
+{
+  FE_SimplexP<dim> fe_linear(1);
+  MappingFE        mapping(fe_linear);
+
+  // The error is an integral, and we approximate that integral using a
+  // quadrature formula. To make sure we are accurate enough, we use a
+  // quadrature formula with one node more than what we used in assembly.
+  const QGaussSimplex<dim> quadrature_error(r + 2);
+
+  // First we compute the norm on each element, and store it in a vector.
+  Vector<double> error_per_cell(mesh.n_active_cells());
+  VectorTools::integrate_difference(mapping,
+                                    dof_handler,
+                                    solution,
+                                    ExactSolution(),
+                                    error_per_cell,
+                                    quadrature_error,
+                                    norm_type);
+
+  // Then, we add out all the cells.
+  const double error =
+    VectorTools::compute_global_error(mesh, error_per_cell, norm_type);
+
+  return error;
 }
