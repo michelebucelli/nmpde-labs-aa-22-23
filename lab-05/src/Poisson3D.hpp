@@ -8,6 +8,7 @@
 
 #include <deal.II/fe/fe_simplex_p.h>
 #include <deal.II/fe/fe_values.h>
+#include <deal.II/fe/mapping_fe.h>
 
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_in.h>
@@ -51,7 +52,25 @@ public:
 
     // Evaluation.
     virtual double
-    value(const Point<dim> &p, const unsigned int /*component*/ = 0) const
+    value(const Point<dim> & /*p*/,
+          const unsigned int /*component*/ = 0) const override
+    {
+      return 1.0;
+    }
+  };
+
+  // Reaction coefficient.
+  class ReactionCoefficient : public Function<dim>
+  {
+  public:
+    // Constructor.
+    ReactionCoefficient()
+    {}
+
+    // Evaluation.
+    virtual double
+    value(const Point<dim> & /*p*/,
+          const unsigned int /*component*/ = 0) const override
     {
       return 1.0;
     }
@@ -67,9 +86,11 @@ public:
 
     // Evaluation.
     virtual double
-    value(const Point<dim> &p, const unsigned int /*component*/ = 0) const
+    value(const Point<dim> &p,
+          const unsigned int /*component*/ = 0) const override
     {
-      return -5.0;
+      return (20.0 * M_PI * M_PI + 1) * std::sin(2.0 * M_PI * p[0]) *
+             std::sin(4.0 * M_PI * p[1]);
     }
   };
 
@@ -83,25 +104,10 @@ public:
 
     // Evaluation.
     virtual double
-    value(const Point<dim> &p, const unsigned int /*component*/ = 0) const
+    value(const Point<dim> & /*p*/,
+          const unsigned int /*component*/ = 0) const override
     {
-      return p[0] + p[1];
-    }
-  };
-
-  // Neumann boundary conditions.
-  class FunctionH : public Function<dim>
-  {
-  public:
-    // Constructor.
-    FunctionH()
-    {}
-
-    // Evaluation:
-    virtual double
-    value(const Point<dim> &p, const unsigned int /*component*/ = 0) const
-    {
-      return p[1];
+      return 0.0;
     }
   };
 
@@ -137,14 +143,14 @@ protected:
   // Diffusion coefficient.
   DiffusionCoefficient diffusion_coefficient;
 
+  // Reaction coefficient.
+  ReactionCoefficient reaction_coefficient;
+
   // Forcing term.
   ForcingTerm forcing_term;
 
   // g(x).
   FunctionG function_g;
-
-  // h(x).
-  FunctionH function_h;
 
   // Triangulation.
   Triangulation<dim> mesh;
@@ -160,9 +166,6 @@ protected:
   // We use a unique_ptr here so that we can choose the type and order of the
   // quadrature formula at runtime (the order is a constructor parameter).
   std::unique_ptr<Quadrature<dim>> quadrature;
-
-  // Quadrature formula used on boundary lines.
-  std::unique_ptr<Quadrature<dim - 1>> quadrature_boundary;
 
   // DoF handler.
   DoFHandler<dim> dof_handler;
