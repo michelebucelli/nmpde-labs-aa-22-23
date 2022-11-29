@@ -12,9 +12,8 @@ Poisson3D::setup()
     GridIn<dim> grid_in;
     grid_in.attach_triangulation(mesh);
 
-    std::ifstream grid_in_file("../mesh/mesh-square-" + std::to_string(N + 1) +
+    std::ifstream grid_in_file("../mesh/mesh-cube-" + std::to_string(N + 1) +
                                ".msh");
-
     grid_in.read_msh(grid_in_file);
 
     std::cout << "  Number of elements = " << mesh.n_active_cells()
@@ -203,17 +202,8 @@ Poisson3D::assemble()
 
     std::map<types::boundary_id, const Function<dim> *> boundary_functions;
 
-    // Exercise 1.
-    // boundary_functions[0] = &function_g;
-    // boundary_functions[1] = &function_g;
-    // boundary_functions[2] = &function_g;
-    // boundary_functions[3] = &function_g;
-
-    // Exercise 2.
-    Functions::ConstantFunction<dim> function_zero(0.0);
-    Functions::ConstantFunction<dim> function_one(1.0);
-    boundary_functions[0] = &function_zero;
-    boundary_functions[1] = &function_one;
+    for (unsigned int i = 0; i < 6; ++i)
+      boundary_functions[i] = &function_g;
 
     // interpolate_boundary_values fills the boundary_values map.
     VectorTools::interpolate_boundary_values(dof_handler,
@@ -235,16 +225,28 @@ Poisson3D::solve()
 
   // Here we specify the maximum number of iterations of the iterative solver,
   // and its tolerance.
-  SolverControl solver_control(1000, 1e-6 * system_rhs.l2_norm());
+  SolverControl solver_control(10000, 1e-6 * system_rhs.l2_norm());
 
   // Since the system matrix is symmetric and positive definite, we solve the
   // system using the conjugate gradient method.
-  SolverCG<Vector<double>> solver(solver_control);
+  SolverGMRES<Vector<double>> solver(solver_control);
+
+  // PreconditionIdentity preconditioner;
+
+  // PreconditionJacobi preconditioner;
+  // preconditioner.initialize(system_matrix);
+
+  PreconditionSOR preconditioner;
+  preconditioner.initialize(
+    system_matrix, PreconditionSOR<SparseMatrix<double>>::AdditionalData(1.0));
+
+  // PreconditionSSOR preconditioner;
+  // preconditioner.initialize(
+  //   system_matrix,
+  //   PreconditionSSOR<SparseMatrix<double>>::AdditionalData(1.0));
 
   std::cout << "  Solving the linear system" << std::endl;
-  // We don't use any preconditioner for now, so we pass the identity matrix
-  // as preconditioner.
-  solver.solve(system_matrix, solution, system_rhs, PreconditionIdentity());
+  solver.solve(system_matrix, solution, system_rhs, preconditioner);
   std::cout << "  " << solver_control.last_step() << " CG iterations"
             << std::endl;
 }

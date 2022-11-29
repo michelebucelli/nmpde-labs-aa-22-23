@@ -10,10 +10,10 @@
 int
 main(int /*argc*/, char * /*argv*/[])
 {
-  const unsigned int N = 19;
-  const unsigned int r = 1;
+  const unsigned int N      = 39;
+  const unsigned int degree = 1;
 
-  Poisson3D problem(N, r);
+  Poisson3D problem(N, degree);
 
   problem.setup();
   problem.assemble();
