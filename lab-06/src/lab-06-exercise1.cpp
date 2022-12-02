@@ -1,9 +1,3 @@
-#include <deal.II/base/convergence_table.h>
-
-#include <fstream>
-#include <iostream>
-#include <vector>
-
 #include "NonLinearDiffusion.hpp"
 
 // Main function.

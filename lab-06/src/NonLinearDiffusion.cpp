@@ -224,13 +224,47 @@ NonLinearDiffusion::solve_system()
   solver.solve(jacobian_matrix, delta_owned, residual_vector, preconditioner);
   pcout << "   " << solver_control.last_step() << " GMRES iterations"
         << std::endl;
-
-  solution = solution_owned;
 }
 
 void
 NonLinearDiffusion::solve_newton()
-{}
+{
+  pcout << "===============================================" << std::endl;
+
+  const unsigned int n_max_iters        = 1000;
+  const double       residual_tolerance = 1e-6;
+
+  unsigned int n_iter        = 0;
+  double       residual_norm = residual_tolerance + 1;
+
+  while (n_iter < n_max_iters && residual_norm > residual_tolerance)
+    {
+      assemble_system();
+      residual_norm = residual_vector.l2_norm();
+
+      pcout << "Newton iteration " << n_iter << "/" << n_max_iters
+            << " - ||r|| = " << std::scientific << std::setprecision(6)
+            << residual_norm << std::flush;
+
+      // We actually solve the system only if the residual is larger than the
+      // tolerance.
+      if (residual_norm > residual_tolerance)
+        {
+          solve_system();
+
+          solution_owned += delta_owned;
+          solution = solution_owned;
+        }
+      else
+        {
+          pcout << " < tolerance" << std::endl;
+        }
+
+      ++n_iter;
+    }
+
+  pcout << "===============================================" << std::endl;
+}
 
 void
 NonLinearDiffusion::output() const
