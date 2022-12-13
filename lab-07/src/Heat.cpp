@@ -215,7 +215,7 @@ Heat::assemble_rhs(const double &time)
   system_rhs.compress(VectorOperation::add);
 
   // Add the term that comes from the old solution.
-  rhs_matrix.vmult_add(system_rhs, solution);
+  rhs_matrix.vmult_add(system_rhs, solution_owned);
 }
 
 void
