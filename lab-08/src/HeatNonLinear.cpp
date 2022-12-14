@@ -240,8 +240,7 @@ HeatNonLinear::solve_newton()
   // We apply the boundary conditions to the initial guess (which is stored in
   // solution_owned and solution).
   {
-    IndexSet dirichlet_dofs;
-    DoFTools::extract_boundary_dofs(dof_handler);
+    IndexSet dirichlet_dofs = DoFTools::extract_boundary_dofs(dof_handler);
 
     function_g.set_time(time);
 
