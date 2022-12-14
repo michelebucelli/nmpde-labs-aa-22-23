@@ -230,7 +230,7 @@ Heat::assemble_rhs(const double &time)
                                              boundary_values);
 
     MatrixTools::apply_boundary_values(
-      boundary_values, lhs_matrix, solution_owned, system_rhs, true);
+      boundary_values, lhs_matrix, solution_owned, system_rhs, false);
   }
 }
 

@@ -210,7 +210,7 @@ HeatNonLinear::assemble_system()
                                              boundary_values);
 
     MatrixTools::apply_boundary_values(
-      boundary_values, jacobian_matrix, delta_owned, residual_vector, true);
+      boundary_values, jacobian_matrix, delta_owned, residual_vector, false);
   }
 }
 
