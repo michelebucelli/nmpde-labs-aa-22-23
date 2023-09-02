@@ -241,6 +241,7 @@ HeatNonLinear::solve_newton()
   // solution_owned and solution).
   {
     IndexSet dirichlet_dofs = DoFTools::extract_boundary_dofs(dof_handler);
+    dirichlet_dofs          = dirichlet_dofs & dof_handler.locally_owned_dofs();
 
     function_g.set_time(time);
 
